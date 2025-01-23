@@ -27,11 +27,25 @@
 		E100FABB2D3F4BFC00139A7D /* pointgod.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pointgod.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E100FACC2D3F4BFD00139A7D /* pointgodTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pointgodTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E100FAD62D3F4BFD00139A7D /* pointgodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pointgodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E100FAFD2D4021D700139A7D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E100FAEA2D4020BA00139A7D /* Exceptions for "pointgod" folder in "pointgod" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E100FABA2D3F4BFC00139A7D /* pointgod */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E100FABD2D3F4BFC00139A7D /* pointgod */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E100FAEA2D4020BA00139A7D /* Exceptions for "pointgod" folder in "pointgod" target */,
+			);
 			path = pointgod;
 			sourceTree = "<group>";
 		};
@@ -75,6 +89,7 @@
 		E100FAB22D3F4BFC00139A7D = {
 			isa = PBXGroup;
 			children = (
+				E100FAFD2D4021D700139A7D /* Info.plist */,
 				E100FABD2D3F4BFC00139A7D /* pointgod */,
 				E100FACF2D3F4BFD00139A7D /* pointgodTests */,
 				E100FAD92D3F4BFD00139A7D /* pointgodUITests */,
@@ -392,8 +407,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"pointgod/Preview Content\"";
+				DEVELOPMENT_TEAM = 2WKZH82JPS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = pointgod/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -429,8 +446,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"pointgod/Preview Content\"";
+				DEVELOPMENT_TEAM = 2WKZH82JPS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = pointgod/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
