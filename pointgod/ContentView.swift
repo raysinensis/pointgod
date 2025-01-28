@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var totalScore: Int = 0
     @State private var history: [(image: UIImage, score: Int)] = []
     @State private var isCameraSource = true
+    @State private var debugMode = false // Toggle for debug mode
 
     var body: some View {
         NavigationView {
@@ -67,6 +68,13 @@ struct ContentView: View {
                         .padding()
                 }
 
+                if debugMode {
+                    Text("Debug Mode: ON")
+                        .font(.headline)
+                        .foregroundColor(.red)
+                        .padding(.top)
+                }
+
                 if !detectedNumbers.isEmpty {
                     Text("Detected Numbers:")
                         .font(.headline)
@@ -105,6 +113,16 @@ struct ContentView: View {
                             .cornerRadius(8)
                     }
 
+                    Button(action: {
+                        debugMode.toggle()
+                    }) {
+                        Text(debugMode ? "Disable Debug" : "Enable Debug")
+                            .padding()
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                    }
+
                     NavigationLink(destination: HistoryView(history: history)) {
                         Text("History")
                             .padding()
@@ -134,6 +152,11 @@ struct ContentView: View {
 
         // Segment the image into regions and process each region
         let regions = segmentImage(processedCGImage)
+
+        if debugMode {
+            print("Number of segments detected: \(regions.count)")
+        }
+
         for region in regions {
             processRegion(region)
         }
@@ -172,116 +195,144 @@ struct ContentView: View {
     }
 
     func segmentImage(_ image: CGImage) -> [CGRect] {
-            let request = VNDetectTextRectanglesRequest()
-            request.reportCharacterBoxes = true
+        let request = VNDetectTextRectanglesRequest()
+        request.reportCharacterBoxes = true
 
-            let handler = VNImageRequestHandler(cgImage: image, options: [:])
-            try? handler.perform([request])
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        try? handler.perform([request])
 
-            guard let observations = request.results as? [VNTextObservation] else { return [] }
+        guard let observations = request.results as? [VNTextObservation] else { return [] }
 
-            return observations.compactMap { $0.boundingBox }.map { boundingBox in
-                let x = boundingBox.origin.x * CGFloat(image.width)
-                let y = (1 - boundingBox.origin.y - boundingBox.size.height) * CGFloat(image.height)
-                let width = boundingBox.size.width * CGFloat(image.width)
-                let height = boundingBox.size.height * CGFloat(image.height)
+        let segments = observations.compactMap { $0.boundingBox }.map { boundingBox in
+            let x = boundingBox.origin.x * CGFloat(image.width)
+            let y = (1 - boundingBox.origin.y - boundingBox.size.height) * CGFloat(image.height)
+            let width = boundingBox.size.width * CGFloat(image.width)
+            let height = boundingBox.size.height * CGFloat(image.height)
 
-                return CGRect(x: x, y: y, width: width, height: height)
-            }
+            return CGRect(x: x, y: y, width: width, height: height)
         }
 
-        func processRegion(_ region: CGRect) {
-            // Placeholder function for processing each region of the image.
-            // Replace with actual OCR logic as needed.
-
-            // For demonstration, adding dummy numbers for each region
-            let randomValue = Int.random(in: 1...100)
-            let detectedNumber = DetectedNumber(
-                id: UUID(),
-                value: "\(randomValue)",
-                position: CGPoint(x: region.midX, y: region.midY),
-                size: CGSize(width: region.width, height: region.height),
-                isSelected: true
-            )
-
-            detectedNumbers.append(detectedNumber)
-            totalScore += randomValue
+        if debugMode {
+            print("Segments: \(segments)")
         }
 
-        func toggleNumberSelection(for number: DetectedNumber) {
-            if let index = detectedNumbers.firstIndex(where: { $0.id == number.id }) {
-                detectedNumbers[index].isSelected.toggle()
-                totalScore += detectedNumbers[index].isSelected ? Int(detectedNumbers[index].value) ?? 0 : -(Int(detectedNumbers[index].value) ?? 0)
-            }
-        }
+        return segments
     }
 
-    struct HistoryView: View {
-        var history: [(image: UIImage, score: Int)]
+    func processRegion(_ region: CGRect) {
+        guard let preprocessedCGImage = preprocessedImage?.cgImage else { return }
 
-        var body: some View {
-            List(history.indices, id: \ .self) { index in
-                let entry = history[index]
-                VStack(alignment: .leading) {
-                    Text("Image \(index + 1)")
-                        .font(.headline)
-                    Text("Score: \(entry.score)")
-                        .font(.subheadline)
+        // Crop the region from the image
+        let cropRect = CGRect(x: region.origin.x, y: region.origin.y, width: region.width, height: region.height)
+        guard let croppedCGImage = preprocessedCGImage.cropping(to: cropRect) else { return }
+        let croppedImage = UIImage(cgImage: croppedCGImage)
 
-                    Image(uiImage: entry.image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 150)
+        if debugMode {
+            print("Processing region: \(region)")
+        }
+
+        // Perform OCR using Vision framework
+        let request = VNRecognizeTextRequest { request, error in
+            guard let observations = request.results as? [VNRecognizedTextObservation] else { return }
+            for observation in observations {
+                if let recognizedText = observation.topCandidates(1).first {
+                    // Filter out non-numeric text
+                    let filteredText = recognizedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let number = Int(filteredText) {
+                        let detectedNumber = DetectedNumber(
+                            id: UUID(),
+                            value: "\(number)",
+                            position: CGPoint(x: region.midX, y: region.midY),
+                            size: CGSize(width: region.width, height: region.height),
+                            isSelected: true
+                        )
+                        DispatchQueue.main.async {
+                            self.detectedNumbers.append(detectedNumber)
+                            self.totalScore += number
+                        }
+                    }
                 }
-                .padding()
             }
-            .navigationTitle("History")
+
+            if debugMode {
+                print("Raw text detected: \(observations.map { $0.topCandidates(1).first?.string ?? "" })")
+            }
         }
+
+        // Configure the OCR request
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false // Disable language correction for better number recognition
+
+        let handler = VNImageRequestHandler(cgImage: croppedCGImage, options: [:])
+        try? handler.perform([request])
     }
 
-    struct DetectedNumber: Identifiable {
-        let id: UUID
-        let value: String
-        let position: CGPoint
-        let size: CGSize
-        var isSelected: Bool
+    func toggleNumberSelection(for number: DetectedNumber) {
+        if let index = detectedNumbers.firstIndex(where: { $0.id == number.id }) {
+            detectedNumbers[index].isSelected.toggle()
+            totalScore += detectedNumbers[index].isSelected ? Int(detectedNumbers[index].value) ?? 0 : -(Int(detectedNumbers[index].value) ?? 0)
+        }
     }
+}
 
-    struct ImagePicker: UIViewControllerRepresentable {
-        @Binding var image: UIImage?
-        var onImageSelected: (UIImage) -> Void
-        var sourceType: UIImagePickerController.SourceType
+struct HistoryView: View {
+    var history: [(image: UIImage, score: Int)]
 
-        func makeCoordinator() -> Coordinator {
-            Coordinator(self)
-        }
-
-        func makeUIViewController(context: Context) -> UIImagePickerController {
-            let picker = UIImagePickerController()
-            picker.delegate = context.coordinator
-            picker.sourceType = sourceType
-            return picker
-        }
-
-        func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-        class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-            let parent: ImagePicker
-
-            init(_ parent: ImagePicker) {
-                self.parent = parent
-            }
-
-            func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-                if let selectedImage = info[.originalImage] as? UIImage {
-                    parent.image = selectedImage
-                    parent.onImageSelected(selectedImage)
-                }
-                picker.dismiss(animated: true)
-            }
-
-            func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-                picker.dismiss(animated: true)
+    var body: some View {
+        List(history.indices, id: \ .self) { index in
+            let entry = history[index]
+            VStack(alignment: .leading) {
+                Text("Image \(index + 1)")
+                    .font(.headline)
+                Text("Score: \(entry.score)")
             }
         }
     }
+}
+
+struct DetectedNumber: Identifiable {
+    let id: UUID
+    let value: String
+    let position: CGPoint
+    let size: CGSize
+    var isSelected: Bool
+}
+
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    var onImageSelected: (UIImage) -> Void
+    var sourceType: UIImagePickerController.SourceType
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = sourceType
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: ImagePicker
+
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let selectedImage = info[.originalImage] as? UIImage {
+                parent.image = selectedImage
+                parent.onImageSelected(selectedImage)
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
